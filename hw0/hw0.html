@@ -24,7 +24,7 @@ body {
 <button id="trainturn" onclick="StopButton()">Stop</button>
 <br>
 <p id="turn">左移</p>
-<p id="angle"></p>
+
 <script>
 var camera,scene,renderer;
 var clock,train;
@@ -57,7 +57,6 @@ function init() {
 }
 
 function animate() {
-  document.getElementById('angle').textContent = angle;
   var radius = 50;
   var tdif;
   
@@ -65,11 +64,11 @@ function animate() {
 	  case 0:
 		train.position.set(line,5,-50);
 		train.rotation.y = Math.PI/2;
-		line -= 6;
+		line -= 1.5;
 		if(line < -50){
 		  clock.start();
 		  mode = 1;
-		  angle = 90;
+		  angle = Math.PI/2;
 		  document.getElementById('turn').textContent = '左半圈';
 		}
 	    break;
@@ -89,7 +88,7 @@ function animate() {
 	  case 2:
 		train.position.set(line,5,50);
 		train.rotation.y = Math.PI/2*3;
-		line += 6;
+		line += 1.5;
 		if(line > 50){
 		  clock.start();
 		  mode = 3;
@@ -106,7 +105,7 @@ function animate() {
 		if(line + radius*Math.cos(angle) < 50){
 		  clock.stop();
 		  mode = 0;
-		  angle = 90;
+		  angle = Math.P;
 		  document.getElementById('turn').textContent = '左轉';
 		}
 		break;
