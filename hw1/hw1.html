@@ -49,6 +49,9 @@ class Wall{
   }
 }
 
+init();
+animate();
+
 function rand(num){
   let ans = 0,tag = Math.random();
   if(tag > 0.5)ans = parseInt(Math.random() * num);
@@ -56,8 +59,7 @@ function rand(num){
   if(ans == 0)ans += 1;
   return ans;
 }
-init();
-animate();
+
 
 function init() {
   collisionSound = document.getElementById ('collisionsound');
@@ -80,7 +82,8 @@ function init() {
   
   var wall = new Wall(20);
   
-  for(let i=0;i<5;i++){
+  let i = 0;
+  while(i < 5){
     p[i] = new Puck(rand(80),rand(80),rand(4),rand(4));    
     let puckMat = new THREE.MeshBasicMaterial();
     puckMat.color = new THREE.Color().setHSL(Math.random(),0.98,0.44);
@@ -91,13 +94,14 @@ function init() {
     Lights[i].position.set(50,50,50);
     Lights[i].color.copy(puckMat.color);
     scene.add(Lights[i]);
+	i++;
   }
-  pos_errorcheck();
+  for(let i = 0;i<p.length-1;i++)
+		for(let j=i+1;j<p.length;j++)
+			poscheck(p[i],p[j]);
 }
 
-function pos_errorcheck(){
-  for(let i = 0;i<p.length-1;i++)for(let j=i+1;j<p.length;j++)poscheck(p[i],p[j]);
-}
+
 function poscheck(p1,p2){
   if(Math.abs(p1.x-p2.x) < num_to_change){
     p1.x += (p1.x-p2.x);
@@ -119,12 +123,9 @@ function animate() {
   }
 
   requestAnimationFrame(animate);
-  render();
-}
-
-function render() {
   renderer.render(scene, camera);
 }
+
 
 function checkout(){
   let i;
@@ -132,7 +133,8 @@ function checkout(){
 	for(let j=i+1;j<p.length;j++)
 		puckscheck(p[i],p[j]);
 		
-  for(i = 0;i<p.length;i++)wallcheck(p[i]);
+  for(i = 0;i<p.length;i++)
+		wallcheck(p[i]);
 }
 
 function puckscheck(P1,P2){
