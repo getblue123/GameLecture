@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Cache-Control" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<style>
+#info {
+  position: absolute;
+  top: 0px;
+  width: 100%;
+  padding: 10px;
+  text-align: center;
+  color: #ffff00;
+}
+body {
+  overflow: hidden;
+}
+</style>
+</head>
+<body>
+<div id="info">hw5
+</div>
+<script src="https://threejs.org/build/three.min.js"></script>
+<script>
+// IIFE addition of clamp function
+(function() {
+  Math.clamp = function(val, min, max) {
+    return Math.min(Math.max(val, min), max);
+  }
+})();
+
+class Agent {
+  constructor(pos, mesh) {
+    this.pos = pos.clone();
+    this.vel = new THREE.Vector3();
+    this.force = new THREE.Vector3();
+    this.target = null;
+    this.size = 3;
+    this.mesh = mesh;
+    scene.add(mesh);
+    this.MAXSPEED = 10;
+    this.ARRIVAL_R = 20;
+    this.nbhd = [];
+    this.angle = 0;
+  }
+  distanceTo(otherAgent){return this.pos.distanceTo(otherAgent.pos)}
+  addNbr(otherAgent){this.nbhd.push(otherAgent)}
+  update(dt){
+    this.accumulateForce();
+    this.vel.add(this.force.clone().multiplyScalar(dt));
+
+    if(this.target){
+    	let diff = this.target.clone().sub(this.pos)
+      let dst = diff.length();
+      if (dst < this.ARRIVAL_R){
+        this.vel.setLength(dst);
+      }
+    }
+  
+    let speed = this.vel.length();
+    this.vel.setLength(Math.clamp(speed, 0, this.MAXSPEED));
+    this.pos.add(this.vel.clone().multiplyScalar(dt));
+    this.mesh.position.copy(this.pos);
+
+    if(this.vel.length() > 1){
+      this.angle = Math.atan2(this.vel.y, this.vel.x);
+      this.mesh.rotation.z = this.angle;
+    }
+  }
+  setTarget(x, y, z){
+    if (this.target)this.target.set(x, y, z);
+    else this.target = new THREE.Vector3(x, y, z);
+  }
+  targetInducedForce(targetPos, mode = 0){ 
+    let speed;
+    if (mode === 0)speed = this.MAXSPEED;
+    else if (mode === 1)speed = this.vel.length();
+    return targetPos.clone().sub(this.pos).normalize().multiplyScalar(speed).sub(this.vel)
+  }
+    accumulateForce(){
+     this.force.set(0, 0, 0);
+     if (this.target)this.force.add(this.targetInducedForce(this.target));
+     let push = new THREE.Vector3()
+     for (let i = 0; i < this.nbhd.length; i++) {
+      let point = this.pos.clone().sub(this.nbhd[i].pos);
+      push.add(point.setLength(1 / point.length()));
+     }
+     this.force.add(push);
+     if (this.force.x < 0)this.force.x = -this.force.x/10;
+     let posF = this.pos.clone().add(this.vel);
+     let distance,proj;
+    
+     if(posF.x > -50 && posF.x <= -17){
+       let pHat = c2.clone().sub(c1).normalize();
+       let tmp = posF.clone().sub(c1);
+       proj = pHat.multiplyScalar(tmp.dot(pHat)).add(c1);
+       if (proj > pHat) 
+        proj = tmp.multiplyScalar(pHat);
+     }
+
+     else if(posF.x > -17 && posF.x <= 16){
+       let pHat = c3.clone().sub(c2).normalize();
+       let tmp = posF.clone().sub(c2);
+       proj = pHat.multiplyScalar(tmp.dot(pHat)).add(c2);
+     }
+
+     else{
+       let pHat = c4.clone().sub(c3).normalize();
+       let tmp = posF.clone().sub(c3);
+       proj = pHat.multiplyScalar(tmp.dot(pHat)).add(c3);
+     }
+     distance = posF.distanceTo(proj);
+       if (distance > radius){
+         let correction = this.targetInducedForce(proj, 0)
+		 this.force.add(correction);
+	   }
+    }
+}
+
+function BuildAgent(){
+  let pos = new THREE.Vector3(-50, -30, 0);
+  let mesh = new THREE.Mesh(new THREE.CircleGeometry(1, 20), new THREE.MeshBasicMaterial({color: 'cyan'}));
+  mesh.material.color = new THREE.Color().setHSL(Math.random(),Math.random(),Math.random());
+  let agent = new Agent(pos, mesh);
+  agent.vel.set(4, -2, 0);
+  agents.push(agent);
+}
+
+function findNbhd(agents){
+  let i, j, dst;
+  let nAgents = agents.length;
+  agents.forEach(function(agent){agent.nbhd = [];});
+  for (i = 0; i < nAgents - 1; i++){
+    for (j = i + 1; j < nAgents; j++){
+      dst = agents[i].distanceTo(agents[j])
+      if (dst < 3) {
+        agents[i].addNbr(agents[j]);
+        agents[j].addNbr(agents[i]);
+      }
+    }
+  }
+}
+
+var camera, scene, renderer, flag = 0, radius;
+var agents = [];
+var c1 = new THREE.Vector3(-50, -30, 0);
+var c2 = new THREE.Vector3(-17, 0, 0);
+var c3 = new THREE.Vector3(16, -30, 0);
+var c4 = new THREE.Vector3(48, 0, 0);
+init();
+animate();
+
+function init() {
+  renderer = new THREE.WebGLRenderer({antialias: true});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x888888);
+  document.body.appendChild(renderer.domElement);
+  scene = new THREE.Scene();
+  camera = new THREE.OrthographicCamera(-50, 50, 50, -50, -10, 100);
+  camera.position.z = 10;
+  let grid = new THREE.GridHelper(100, 10, 'red', 'white');
+  grid.rotation.x = -Math.PI / 2;
+  scene.add(grid);
+  BuildAgent();
+  radius = 4;
+ 
+  let cir = new THREE.Mesh(new THREE.CircleGeometry(radius, 20), new THREE.MeshBasicMaterial({color: 'blue',transparent: true,opacity: 0.5}));
+  //1
+  let path = new THREE.Mesh(new THREE.PlaneGeometry(c1.distanceTo(c2), 2 * radius), new THREE.MeshBasicMaterial({color: 'purple',transparent: true,opacity: 0.1}));
+  scene.add(path);
+  let cir2 = cir.clone();
+  cir.position.copy(c1);
+  cir2.position.copy(c2);
+  scene.add(cir, cir2);
+  let center = c1.clone().add(c2).multiplyScalar(0.5);
+  path.position.copy(center);
+  let p1 = c2.clone().sub(c1);
+  let angle = Math.atan2(p1.y, p1.x);
+  path.rotation.z = angle;
+  //2
+  let path2 = new THREE.Mesh(new THREE.PlaneGeometry(c2.distanceTo(c3), 2 * radius), new THREE.MeshBasicMaterial({color: 'purple',transparent: true,opacity: 0.1}));
+  scene.add(path2);
+  let cir3 = cir.clone();
+  cir3.position.copy(c3);
+  scene.add(cir3);
+  let center2 = c2.clone().add(c3).multiplyScalar(0.5);
+  path2.position.copy(center2);
+  let p2 = c3.clone().sub(c2);
+  let angle2 = Math.atan2(p2.y, p2.x);
+  path2.rotation.z = angle2;
+  //3
+  let path3 = new THREE.Mesh(new THREE.PlaneGeometry(c3.distanceTo(c4), 2 * radius), new THREE.MeshBasicMaterial({color: 'purple',transparent: true,opacity: 0.1}));
+  scene.add(path3);
+  let cir4 = cir.clone();
+  cir4.position.copy(c4);
+  scene.add(cir4);
+  let center3 = c3.clone().add(c4).multiplyScalar(0.5);
+  path3.position.copy(center3);
+  let p3 = c4.clone().sub(c3);
+  let angle3 = Math.atan2(p3.y, p3.x);
+  path3.rotation.z = angle3;
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+  findNbhd(agents);
+  let dt = 0.1;
+  agents.forEach(function(agent) {
+    agent.update(dt);
+  });
+  
+  agents.forEach(function(agent) {
+    if(agent.pos.x > 50)agent.pos.set(-50, -30, 0);
+  });
+
+  if(flag % 100 == 0 && agents.length <= 30)setTimeout(BuildAgent, 1000);
+  flag += 1;
+}
+
+</script>
+</body>
+</html>
